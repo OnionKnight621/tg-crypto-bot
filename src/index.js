@@ -4,7 +4,8 @@ const mongoose = require('mongoose');
 const moment = require('moment');
 
 const configs = require('./configs');
-const User = require('./chats/model');
+const User = require('./db/chats/model');
+const Currency = require('./db/currencies/model');
 const logger = require('./utils/logger');
 const scrap = require('./services/scraper');
 
@@ -22,7 +23,7 @@ mongoose.connect(mongodbUri, configs.mongooseConnectionOptions)
     .catch(err => logger.error(`Could not connect to mongodb... [${err}]`));
 
 bot.start((ctx) => {
-  return ctx.reply('Dorou. Commands: /help, /subscribe, /unsubscribe')
+  return ctx.reply('Dorou. Commands: /help, /subscribe, /unsubscribe, /getall')
 });
 
 bot.use((ctx, next) => {
@@ -65,9 +66,36 @@ bot.command('getall', async (ctx) => {
   return ctx.reply(`Plutus DeFi current price: ${value} | time: ${moment().format()} | link: ${configs.exchangers.plutusDefi}`);
 });
 
+bot.command('add', async (ctx) => {
+  const input = ctx.message.text.trim().split(' ');
+  const link = input[1];
+  const name = input[2];
+  const selector = input[3];
+
+  try {
+    await Currency.createOrUpdate({ name, link, selector });
+    logger.info(`Added, id ${ctx.message.chat.id}, username ${ctx.message.chat.username}`);
+    return ctx.reply(`Added new currency ${name}`);
+  } catch (ex) {
+    logger.error('Add currency error', { ex });
+    return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
+  }
+})
+
+bot.command('getlist', async (ctx) => {
+  try {
+    const currencies = await Currency.getAll();
+    logger.info(`got list, id ${ctx.message.chat.id}, username ${ctx.message.chat.username}`);
+    return ctx.reply(`List: ${JSON.stringify(currencies, null, ' ')}`);
+  } catch (ex) {
+    logger.error('Add currency error', { ex });
+    return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
+  }
+})
+
 // bot.hears('hi', (ctx) => ctx.reply('Hey there'));
 
-schedule.scheduleJob('0 */5 * * * *', async function(){
+schedule.scheduleJob('0 */30 * * * *', async function(){
   try {
     const users = await User.getAll();
     if (users.length) {

@@ -2,19 +2,24 @@ const mongoose = require('mongoose');
 
 const Schema = new mongoose.Schema(
     {
-        chatId: {
-            type    : String,
+        name: {
+            type: String,
             required: true
         },
 
-        name: {
-            type    : String,
+        link: {
+            type: String,
             required: true
         },
-    
-        username: {
-            type    : String,
+
+        selector: {
+            type: String,
             required: true
+        },
+        
+        updatedAt: {
+            type   : Date,
+            default: Date.now
         },
 
         createdAt: {
