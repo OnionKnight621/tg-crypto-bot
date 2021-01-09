@@ -1,38 +1,42 @@
 const {performance} = require('perf_hooks');
 const fs = require('fs');
+const co = require('co');
 const Nightmare = require('nightmare');
 const cheerio = require('cheerio');
-const axios = require('axios').default;
+const htmlparser2 = require('htmlparser2');
+
+const logger = require('../utils/logger');
 
 async function scrapper(uri, selectors) {
     const t0 = performance.now();
 
-    const nightmare = Nightmare({show: true});
+    const nightmare = Nightmare({show: false});
+    let currencyValue = null;
 
     await nightmare.goto(uri)
-        .wait(10)
+        .wait(1000)
         .wait('body')
         .evaluate(() => {
-            console.log(11)
             return document.body.innerHTML;
         })
-        // .end()
-        .then(res => {
-            nightmare.end()
-            console.log(res, 12)
-            getData(res)
-        })
-        .catch(err => console.log({err}));
+        .then(async (html) => {
+            logger.info('Getting currency value');
 
-    let getData = html => {
-        console.log(html)
-        return 112;
-    }
+            const dom = htmlparser2.parseDocument(html, {
+                withDomLvl1        : true,
+                normalizeWhitespace: false,
+                xmlMode            : true,
+                decodeEntities     : true
+            });
+            const $ = cheerio.load(dom);
+            const value = $(selectors).contents().first().text().trim();
+            currencyValue = value;
+        })
+        .catch(err => logger.error({err}));
 
     const t1 = performance.now();
-    console.log(`Time spent: ${Number((t1 - t0) / 1000).toFixed(2)}`);
-    return r;
-    // process.exit(0);
+    logger.info(`Time spent: ${Number((t1 - t0) / 1000).toFixed(2)}`);
+    return currencyValue;
 }
 
 module.exports = scrapper;

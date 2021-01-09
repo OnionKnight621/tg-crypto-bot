@@ -1,12 +1,17 @@
-const TelegramBot = require('node-telegram-bot-api');
 const { Telegraf } = require('telegraf');
 const schedule = require('node-schedule');
 const mongoose = require('mongoose');
+const moment = require('moment');
 
 const configs = require('./configs');
 const User = require('./chats/model');
 const logger = require('./utils/logger');
 const scrap = require('./services/scraper');
+
+// get plutus defi from https://coindataflow.com/ru
+async function getPlutus() {
+  return await scrap(configs.exchangers.plutusDefi, '.details-price span');
+}
 
 const bot = new Telegraf(configs.token);
 
@@ -55,8 +60,9 @@ bot.command('unsubscribe', async (ctx) => {
   }
 });
 
-bot.command('get', async (ctx) => {
-  scrap('https://coindataflow.com/ru/%D0%BA%D1%80%D0%B8%D0%BF%D1%82%D0%BE%D0%B2%D0%B0%D0%BB%D1%8E%D1%82%D1%8B/plutus-defi', 'prefer-nav__left--price')
+bot.command('getall', async (ctx) => {
+  const value = await getPlutus();
+  return ctx.reply(`Plutus DeFi current price: ${value} | time: ${moment().format()} | link: ${configs.exchangers.plutusDefi}`);
 });
 
 // bot.hears('hi', (ctx) => ctx.reply('Hey there'));

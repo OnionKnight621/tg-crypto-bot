@@ -25,4 +25,9 @@ configs.username = 'cryptoJMbIXBot';
 configs.link = 't.me/cryptoJMbIXBot';
 configs.token = '1147822070:AAEX32tj_f5txAUddGq3KO4seOzP5JNyHxE';
 
+// crypto stock exchangers
+configs.exchangers = {
+    plutusDefi: 'https://coindataflow.com/ru/%D0%BA%D1%80%D0%B8%D0%BF%D1%82%D0%BE%D0%B2%D0%B0%D0%BB%D1%8E%D1%82%D1%8B/plutus-defi'
+};
+
 module.exports = configs;
