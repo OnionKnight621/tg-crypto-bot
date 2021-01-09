@@ -20,6 +20,11 @@ bot.start((ctx) => {
   return ctx.reply('Dorou. Commands: /help, /subscribe, /unsubscribe')
 });
 
+bot.use((ctx, next) => {
+  logger.info(`message "${ctx.message.text}", id ${ctx.message.chat.id}, username ${ctx.message.chat.username}`)
+  return next();
+});
+
 bot.help((ctx) => {
   return ctx.reply('Пашол нахуй!')
 });
