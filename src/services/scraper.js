@@ -20,7 +20,7 @@ async function scrapper(uri, selectors) {
             return document.body.innerHTML;
         })
         .then(async (html) => {
-            logger.info('Getting currency value');
+            logger.info('[SCRAPER] Getting currency value');
 
             const dom = htmlparser2.parseDocument(html, {
                 withDomLvl1        : true,
@@ -35,7 +35,7 @@ async function scrapper(uri, selectors) {
         .catch(err => logger.error({err}));
 
     const t1 = performance.now();
-    logger.info(`Time spent: ${Number((t1 - t0) / 1000).toFixed(2)}`);
+    logger.info(`[SCRAPER] Time spent: ${Number((t1 - t0) / 1000).toFixed(2)}`);
     return currencyValue;
 }
 
