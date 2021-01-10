@@ -10,6 +10,7 @@ const logger = require('./utils/logger');
 const scrap = require('./services/scraper');
 const joiValidate = require('./utils/joiValidate');
 const currenciesJoiSchema = require('./joiSchemes/currency').addCurrency;
+const { number } = require('joi');
 
 // get plutus defi from https://coindataflow.com/ru
 async function getPlutus() {
@@ -127,6 +128,11 @@ bot.command('get', async (ctx) => {
   const inputString = ctx.message.text.trim();
   const name = inputString.split(' ')[1];
   let currency;
+
+  if (!name) {
+    logger.info(`[GET] no name [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+    return ctx.reply(`Specify currency name`);
+  }
 
   try {
     currency = await Currency.getByName(name);
