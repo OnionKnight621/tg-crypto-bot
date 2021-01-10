@@ -45,7 +45,12 @@ bot.use((ctx, next) => {
 
 bot.help((ctx) => {
   logger.info(`[HELP] [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`)
-  return ctx.reply('Some help message!')
+  return ctx.reply(`Commands usage:
+  /subscribe, /unsubscribe - to scheduled messages
+  /getall - get all valid currencies from DB
+  /getlist - get full list of currencies (with param names will get only names. Ex: /getlist names)
+  /add [name] [link] [selectors] - add custom currency ('name' and 'link' params should be without whitespaces but whitespaces allowed for 'selectors' param).
+  /get [name] - get currency value`);
 });
 
 bot.command('subscribe', async (ctx) => {
@@ -182,7 +187,7 @@ bot.command('getlist', async (ctx) => {
   }
 })
 
-// bot.hears('hi', (ctx) => ctx.reply('Hey there'));
+bot.hears('ping', (ctx) => ctx.reply('pong'));
 
 schedule.scheduleJob('0 */5 * * * *', async function(){
   try {
