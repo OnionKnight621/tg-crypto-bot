@@ -8,6 +8,8 @@ const User = require('./db/chats/model');
 const Currency = require('./db/currencies/model');
 const logger = require('./utils/logger');
 const scrap = require('./services/scraper');
+const joiValidate = require('./utils/joiValidate');
+const currenciesJoiSchema = require('./joiSchemes/currency').addCurrency;
 
 // get plutus defi from https://coindataflow.com/ru
 async function getPlutus() {
@@ -32,7 +34,12 @@ bot.start((ctx) => {
 });
 
 bot.use((ctx, next) => {
-  logger.info(`[MESSAGE] "${ctx.message.text}" [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`)
+  console.log(ctx.message, 1)
+  if (ctx.message) {
+    logger.info(`[MESSAGE] "${ctx.message.text}" [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+  } else {
+    logger.info('Smth strange');
+  }
   return next();
 });
 
@@ -88,16 +95,31 @@ bot.command('add', async (ctx) => {
     }
   }
 
-  const name = inputString.slice(wIndices[0], wIndices[1] + 1);
-  const link = inputString.slice(wIndices[1], wIndices[2] + 1);
-  const selector = inputString.slice(wIndices[2], wIndices[wIndices.length]);
+  if (wIndices.length < 3) {
+    logger.error('[ADD] currency validation error: not enough params');
+    return ctx.reply(`Validation error: Not enough params`);
+  }
+
+  const payload = {
+    name: inputString.slice(wIndices[0], wIndices[1] + 1),
+    link: inputString.slice(wIndices[1], wIndices[2] + 1),
+    selector: inputString.slice(wIndices[2], wIndices[wIndices.length])
+  }
+
+  let options;
+  try {
+    options = await joiValidate(payload, currenciesJoiSchema);
+  } catch (ex) {
+    logger.error('[ADD] currency validation error', ex);
+    return ctx.reply(`[ADD] Validation error: ${ex}`);
+  }
 
   try {
-    await Currency.createOrUpdate({ name, link, selector });
+    await Currency.createOrUpdate(options);
     logger.info(`[ADD] Successfully added [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
-    return ctx.reply(`Added new currency ${name}`);
+    return ctx.reply(`Added new currency ${options.name}`);
   } catch (ex) {
-    logger.error('[ADD] currency error', { ex });
+    logger.error('[ADD] currency store error', ex);
     return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
   }
 });
@@ -105,8 +127,16 @@ bot.command('add', async (ctx) => {
 bot.command('getlist', async (ctx) => {
   try {
     const currencies = await Currency.getAll();
+    const formatted = currencies.map((item) => {
+      return {
+        name: item.name,
+        link: item.link,
+        selectors: item.selector,
+        date: item.createdAt
+      }
+    })
     logger.info(`[GET LIST] Succesfully got list [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
-    return ctx.reply(`List: ${JSON.stringify(currencies, null, ' ')}`);
+    return ctx.reply(`List: ${JSON.stringify(formatted, null, ' ')}`);
   } catch (ex) {
     logger.error(`[GET LIST] error`, { ex });
     return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
@@ -115,7 +145,7 @@ bot.command('getlist', async (ctx) => {
 
 // bot.hears('hi', (ctx) => ctx.reply('Hey there'));
 
-schedule.scheduleJob('0 */1 * * * *', async function(){
+schedule.scheduleJob('0 */5 * * * *', async function(){
   try {
     // const users = await User.getAll();
     // if (users.length) {

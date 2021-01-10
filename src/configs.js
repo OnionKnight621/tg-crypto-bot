@@ -13,11 +13,10 @@ configs.mongooseConnectionOptions = {
     useFindAndModify  : false
 };
 
-// redis
+// redis / unused now
 configs.redisPort = process.env.REDIS_PORT || 6379;
 configs.redisHost = process.env.REDIS_HOST || 'localhost';
 configs.redisPassword = process.env.REDIS_PASSWORD || '';
-// configs.redisDb = 0
 
 // tg options
 configs.name = '长尸计刀丅口米从仈乂';
