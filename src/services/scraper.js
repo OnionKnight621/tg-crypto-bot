@@ -32,7 +32,7 @@ async function scrapper(uri, selectors) {
             const value = $(selectors).contents().first().text().trim();
             currencyValue = value;
         })
-        .catch(err => logger.error({err}));
+        .catch(err => logger.error(`[SCRAPPER] error`, { err }));
 
     const t1 = performance.now();
     logger.info(`[SCRAPER] Time spent: ${Number((t1 - t0) / 1000).toFixed(2)}`);

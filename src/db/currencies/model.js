@@ -17,6 +17,10 @@ const Currency = {
 
     deleteByName(name) {
         return Model.findOneAndDelete({ name })
+    },
+
+    getByName(name) {
+        return Model.findOne({ name });
     }
 };
 

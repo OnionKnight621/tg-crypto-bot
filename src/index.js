@@ -34,7 +34,6 @@ bot.start((ctx) => {
 });
 
 bot.use((ctx, next) => {
-  console.log(ctx.message, 1)
   if (ctx.message) {
     logger.info(`[MESSAGE] "${ctx.message.text}" [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
   } else {
@@ -101,9 +100,9 @@ bot.command('add', async (ctx) => {
   }
 
   const payload = {
-    name: inputString.slice(wIndices[0], wIndices[1] + 1),
-    link: inputString.slice(wIndices[1], wIndices[2] + 1),
-    selector: inputString.slice(wIndices[2], wIndices[wIndices.length])
+    name: inputString.slice(wIndices[0] + 1, wIndices[1]),
+    link: inputString.slice(wIndices[1] + 1, wIndices[2]),
+    selector: inputString.slice(wIndices[2] + 1, wIndices[wIndices.length])
   }
 
   let options;
@@ -124,7 +123,41 @@ bot.command('add', async (ctx) => {
   }
 });
 
+bot.command('get', async (ctx) => {
+  const inputString = ctx.message.text.trim();
+  const name = inputString.split(' ')[1];
+  let currency;
+
+  try {
+    currency = await Currency.getByName(name);
+    logger.info(`[GET] Successfully got ${name} [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+  } catch (ex) {
+    logger.error('[GET] get currency error', ex);
+    return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
+  }
+
+  if (currency) {
+    const value = await scrapCurrency(currency.link, currency.selector);
+    logger.info(`[GET] ${currency.name} currency value succesfully got`);
+    return ctx.reply(`${currency.name}: ${value}`);
+  }
+
+  return ctx.reply(`No such currency inside DB`);
+});
+
 bot.command('getlist', async (ctx) => {
+  if (ctx.message.text.split(' ')[1] === 'names') {
+    try {
+      const currencies = await Currency.getAll();
+      const formatted = currencies.map((item) => item.name);
+      logger.info(`[GET LIST] Succesfully got list of names [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+      return ctx.reply(`List: ${JSON.stringify(formatted, null, ' ')}`);
+    } catch (ex) {
+      logger.error(`[GET LIST] error`, { ex });
+      return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
+    }
+  }
+
   try {
     const currencies = await Currency.getAll();
     const formatted = currencies.map((item) => {
