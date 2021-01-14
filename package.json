@@ -1,8 +1,8 @@
 {
   "name": "tg-crypto-monitor",
-  "version": "0.1.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.2.0",
+  "description": "telegram crypto bot",
+  "main": "src/index.js",
   "scripts": {
     "start:dev": "nodemon src/index.js",
     "start": "node src/index.js"
@@ -26,5 +26,8 @@
     "node-telegram-bot-api": "^0.50.0",
     "redis": "^3.0.2",
     "telegraf": "^3.38.0"
+  },
+  "engines": {
+    "node": "^14.15.4"
   }
 }

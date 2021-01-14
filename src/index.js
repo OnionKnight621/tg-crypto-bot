@@ -2,7 +2,6 @@ const { Telegraf } = require('telegraf');
 const { Router, session } = Telegraf;
 const schedule = require('node-schedule');
 const mongoose = require('mongoose');
-const moment = require('moment');
 
 const configs = require('./configs');
 const User = require('./db/chats/model');
@@ -12,11 +11,6 @@ const scrap = require('./services/scraper');
 const joiValidate = require('./utils/joiValidate');
 const currenciesJoiSchema = require('./joiSchemes/currency').addCurrency;
 const createUserJoiSchema = require('./joiSchemes/user').createUser;
-
-// get plutus defi from https://coindataflow.com/ru
-async function getPlutus() {
-  return await scrap(configs.exchangers.plutusDefi, '.details-price span');
-}
 
 async function scrapCurrency(link, selector) {
   return await scrap(link, selector);
@@ -270,7 +264,7 @@ bot.command('getnames', async (ctx) => {
 
 bot.hears('ping', (ctx) => ctx.reply('pong'));
 
-schedule.scheduleJob('0 */1 * * * *', async function(){
+schedule.scheduleJob('0 */30 * * * *', async function(){
   let currencies;
   let subscribed;
   try {
