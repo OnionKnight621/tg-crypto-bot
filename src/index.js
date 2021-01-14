@@ -2,6 +2,8 @@ const { Telegraf } = require('telegraf');
 const { Router, session } = Telegraf;
 const schedule = require('node-schedule');
 const mongoose = require('mongoose');
+const express = require('express');
+const expressApp = express();
 
 const configs = require('./configs');
 const User = require('./db/chats/model');
@@ -17,6 +19,8 @@ async function scrapCurrency(link, selector) {
 }
 
 const bot = new Telegraf(configs.token);
+bot.telegram.setWebhook(`${configs.appUri}/bot${configs.token}`);
+expressApp.use(bot.webhookCallback(`/bot${configs.token}`));
 
 const mongodbUri = configs.mongodbUri;
 
@@ -302,6 +306,14 @@ schedule.scheduleJob('0 */30 * * * *', async function(){
 });
 
 bot.launch();
+
+expressApp.get('/ping', (req, res) => {
+  res.send('pong');
+});
+
+expressApp.listen(configs.port, () => {
+  logger.info(`Server is running on ${configs.port}`);
+});
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'))

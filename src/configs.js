@@ -4,8 +4,8 @@ const configs = {};
 // app options
 configs.appDir = path.resolve(__dirname);
 configs.appname = 'telegramCryptoBot';
-configs.port = process.env.NODE_ENV || 5555;
-configs.appUri = `localhost:${configs.port}`;
+configs.port = process.env.PORT || 5555;
+configs.appUri = process.env.URI || `localhost:${configs.port}`;
 configs.mongodbUri = process.env.MONGODB_URL || `mongodb://localhost:27017/${configs.appname}`;
 configs.mongooseConnectionOptions = {
     useNewUrlParser   : true, 
