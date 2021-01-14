@@ -16,6 +16,16 @@ const Schema = new mongoose.Schema(
             type: String,
             required: true
         },
+
+        exchangeStock: {
+            type: String,
+            default: null
+        },
+
+        lastPrice: {
+            type: String,
+            default: null
+        },
         
         updatedAt: {
             type   : Date,

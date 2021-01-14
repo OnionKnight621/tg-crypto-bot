@@ -24,6 +24,11 @@ const Schema = new mongoose.Schema(
             enum: Object.values(roles)
         },
 
+        subscribed: {
+            type: Boolean,
+            default: false
+        },
+
         updatedAt: {
             type   : Date,
             default: Date.now

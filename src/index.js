@@ -11,6 +11,7 @@ const logger = require('./utils/logger');
 const scrap = require('./services/scraper');
 const joiValidate = require('./utils/joiValidate');
 const currenciesJoiSchema = require('./joiSchemes/currency').addCurrency;
+const createUserJoiSchema = require('./joiSchemes/user').createUser;
 
 // get plutus defi from https://coindataflow.com/ru
 async function getPlutus() {
@@ -35,28 +36,51 @@ bot.use(session({
 }));
 
 bot.use((ctx, next) => {
+  // microsession
+  if (ctx.session.id) {
+    console.log(ctx.session.id)
+  } else {
+    ctx.session.id = ctx.from.id
+    logger.info(`[SESSION] created [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+  }
+
   if (ctx.message) {
     logger.info(`[MESSAGE] "${ctx.message.text}" [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
-  } else {
-    if (ctx.update.callback_query.data) {
-      logger.info(`[ACTION] "${ctx.update.callback_query.data}" [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+  } else if (ctx.update.callback_query.data) {
+    logger.info(`[ACTION] "${ctx.update.callback_query.data}" [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
       ctx.update.callback_query.options = ctx.update.callback_query.data.split(' ')[1];
       ctx.update.callback_query.data = ctx.update.callback_query.data.split(' ')[0];
-    } else {
-      logger.info('Smth strange', {c: ctx.message});
-    }
+  } else {
+    logger.info('Smth strange', {c: ctx.message});
   }
   return next();
 });
 
-bot.start((ctx) => {
-  logger.info(`[START] [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`)
+bot.start(async (ctx) => {
+  const payload = {
+    chatId  : ctx.chat.id,
+    name    : ctx.chat.first_name,
+    username: ctx.chat.username 
+  };
+  let options;
+  try {
+    options = await joiValidate(payload, createUserJoiSchema);
+  } catch (ex) {
+    logger.error('[ADD] currency validation error', ex);
+    return ctx.reply(`[ADD] Validation error: ${ex}`);
+  }
+  try {
+    await User.createOrUpdate(options);
+    logger.info(`[START] created user [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+  } catch (ex) {
+    logger.error(`[START] create user error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
+  }
 
   return ctx.reply('Dorou. Commands: /help, /subscribe, /unsubscribe, /getall, /getlist, /add, /get')
 });
 
 bot.help((ctx) => {
-  logger.info(`[HELP] [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`)
+  logger.info(`[HELP] [id ${ctx.chat.id}, username ${ctx.chat.username}]`)
   return ctx.reply(`Commands usage:
   /subscribe, /unsubscribe - to scheduled messages
   /getall - get all valid currencies from DB
@@ -68,42 +92,53 @@ bot.help((ctx) => {
 
 bot.command('subscribe', async (ctx) => {
   try {
-    await User.createOrUpdate({
-      chatId  : ctx.message.chat.id,
-      name    : ctx.message.chat.first_name,
-      username: ctx.message.chat.username 
-    });
-    logger.info(`[SUBSCRIBE] succesfully subscribed [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+    await User.createOrUpdate({ chatId: ctx.chat.id, subscribed: true, updatedAt: new Date() });
+    logger.info(`[SUBSCRIBE] succesfully subscribed [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
     return ctx.reply('Малаца');
   } catch (ex) {
-    logger.error(`[SUBSCRIBE] error [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`, { ex });
+    logger.error(`[SUBSCRIBE] error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
     return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
   }
 });
 
 bot.command('unsubscribe', async (ctx) => {
   try {
-    await User.deleteByChatId(ctx.message.chat.id);
-    logger.info(`[UNSUBSCRIBE] succesfully unsubscribed [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+    await User.createOrUpdate({ chatId: ctx.chat.id, subscribed: false, updatedAt: new Date() });
+    logger.info(`[UNSUBSCRIBE] succesfully unsubscribed [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
     return ctx.reply('Nu i spierdalaj!');
   } catch (ex) {
-    logger.error(`[UNSUBSCRIBE] error [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`, { ex });
+    logger.error(`[UNSUBSCRIBE] error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
     return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
   }
 });
 
 bot.command('getall', async (ctx) => {
-  const value = await getPlutus();
-  logger.info(`[GET ALL] [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
-  return ctx.reply(`Plutus DeFi current price: ${value} | time: ${moment().format()} | link: ${configs.exchangers.plutusDefi}`);
+  let currencies;
+  try {
+    currencies = await Currency.getAll();
+  } catch (ex) {
+    logger.error(`[GET ALL] get currencies error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
+    return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
+  }
+
+  if (currencies.length) {
+    for (const currency of currencies) {
+      const value = await scrapCurrency(currency.link, currency.selector);
+      ctx.reply(`${currency.name} current price: ${value}, <a href="${currency.link}">link</a>`, {parse_mode: 'HTML'});
+    }
+  }
+
+  logger.info(`[GET ALL] [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+  return ctx.reply(`Thats All for now`);
 });
 
 bot.command('add', async (ctx) => {
+  const re = /[\d\w\.]{3,}\//gmi;
   const inputString = ctx.message.text.trim();
   const wIndices = [];
 
   if (inputString === '/add') {
-    logger.info(`[ADD] No params inside add [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+    logger.info(`[ADD] No params inside add [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
     return ctx.reply(`Specify params for currency`); 
   }
 
@@ -119,9 +154,10 @@ bot.command('add', async (ctx) => {
   }
 
   const payload = {
-    name: inputString.slice(wIndices[0] + 1, wIndices[1]),
-    link: inputString.slice(wIndices[1] + 1, wIndices[2]),
-    selector: inputString.slice(wIndices[2] + 1, wIndices[wIndices.length])
+    name         : inputString.slice(wIndices[0] + 1, wIndices[1]),
+    link         : inputString.slice(wIndices[1] + 1, wIndices[2]),
+    selector     : inputString.slice(wIndices[2] + 1, wIndices[wIndices.length]),
+    exchangeStock: inputString.slice(wIndices[1] + 1, wIndices[2]).match(re)[0]
   }
 
   let options;
@@ -134,7 +170,7 @@ bot.command('add', async (ctx) => {
 
   try {
     await Currency.createOrUpdate(options);
-    logger.info(`[ADD] Successfully added [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+    logger.info(`[ADD] Successfully added [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
     return ctx.reply(`Added new currency ${options.name}`);
   } catch (ex) {
     logger.error('[ADD] currency store error', ex);
@@ -148,13 +184,13 @@ bot.command('get', async (ctx) => {
   let currency;
 
   if (!name) {
-    logger.info(`[GET] no name [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+    logger.info(`[GET] no name [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
     return ctx.reply(`Specify currency name`);
   }
 
   try {
     currency = await Currency.getByName(name);
-    logger.info(`[GET] Successfully got ${name} [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+    logger.info(`[GET] Successfully got ${name} [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
   } catch (ex) {
     logger.error('[GET] get currency error', ex);
     return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
@@ -177,8 +213,6 @@ bot.action('get', async (ctx) => {
     logger.info(`[GET] no name [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
     return ctx.reply(`Specify currency name`);
   }
-
-  console.log(name)
 
   try {
     currency = await Currency.getByName(name);
@@ -208,7 +242,7 @@ bot.command('getlist', async (ctx) => {
         date: item.createdAt
       }
     })
-    logger.info(`[GET LIST] Succesfully got list [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+    logger.info(`[GET LIST] Succesfully got list [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
     return ctx.reply(`List: ${JSON.stringify(formatted, null, ' ')}`);
   } catch (ex) {
     logger.error(`[GET LIST] error`, { ex });
@@ -220,10 +254,9 @@ bot.command('getnames', async (ctx) => {
   try {
     const currencies = await Currency.getAll();
     const formatted = currencies.map((item) => {
-      return {text: item.name, callback_data: `get ${item.name}`}
-      // return {text: `/get ${item.name}`}
+      return {text: item.name, callback_data: `get ${item.name}`};
     });
-    logger.info(`[GET LIST] Succesfully got list of names [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+    logger.info(`[GET LIST] Succesfully got list of names [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
     return ctx.reply(`List`, {
       reply_markup: {
         inline_keyboard:[formatted]
@@ -237,19 +270,41 @@ bot.command('getnames', async (ctx) => {
 
 bot.hears('ping', (ctx) => ctx.reply('pong'));
 
-schedule.scheduleJob('0 */5 * * * *', async function(){
+schedule.scheduleJob('0 */1 * * * *', async function(){
+  let currencies;
+  let subscribed;
   try {
-    // const users = await User.getAll();
-    // if (users.length) {
-    //   for(const user of users) {
-    //     bot.telegram.sendMessage(user.chatId, 'scheduled phrase `волк не тот, кто ночью выл, а тот, кто за собой парашу смыл`');
-    //   }
-    // }
-    logger.info('[SCHEDULER] Scheduler ping');
+    currencies = await Currency.getAll();
   } catch (ex) {
-    logger.error('SCheduled error', { ex });
-    throw ex;
+    logger.error(`[GET ALL] get currencies error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
+    return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
   }
+
+  let message = `Currencies:
+  `;
+
+  if (currencies.length) {
+    for (const currency of currencies) {
+      const value = await scrapCurrency(currency.link, currency.selector);
+      message += `- ${currency.name} current price: ${value}, <a href="${currency.link}">link</a>
+  `; //shit, but needed for formatting
+    }
+  }
+
+  try {
+    subscribed = await User.getSubscribed();
+  } catch (ex) {
+    logger.error(`[GET ALL] get subscribed error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
+    return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
+  }
+
+  if (subscribed.length) {
+    for (const sub of subscribed) {
+      bot.telegram.sendMessage(sub.chatId, message, {parse_mode: 'HTML'});
+    }
+  }
+
+  logger.info(`[SCHEDULER] ping`)
 });
 
 bot.launch();
@@ -257,3 +312,4 @@ bot.launch();
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))
+

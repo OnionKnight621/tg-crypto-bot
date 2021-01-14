@@ -15,6 +15,14 @@ const Chat = {
         return Model.find();
     },
 
+    getSubscribed() {
+        return Model.find({ subscribed: true });
+    },
+
+    get(chatId) {
+        return Model.findOne({chatId});
+    },
+
     deleteByChatId(chatId) {
         return Model.findOneAndDelete({ chatId })
     }
