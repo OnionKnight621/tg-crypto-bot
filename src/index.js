@@ -32,7 +32,7 @@ bot.use(session({
 bot.use((ctx, next) => {
   // microsession
   if (ctx.session.id) {
-    console.log(ctx.session.id)
+    logger.info(`[SESSION] exists [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
   } else {
     ctx.session.id = ctx.from.id
     logger.info(`[SESSION] created [id ${ctx.chat.id}, username ${ctx.chat.username}]`);

@@ -6,7 +6,7 @@ configs.appDir = path.resolve(__dirname);
 configs.appname = 'telegramCryptoBot';
 configs.port = process.env.NODE_ENV || 5555;
 configs.appUri = `localhost:${configs.port}`;
-configs.mongodbUri = `mongodb://localhost:27017/${configs.appname}`;
+configs.mongodbUri = `mongodb+srv://onion:62118312@cluster0.srer3.mongodb.net/${configs.appname}`;
 configs.mongooseConnectionOptions = {
     useNewUrlParser   : true, 
     useUnifiedTopology: true,
