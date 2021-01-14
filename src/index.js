@@ -1,4 +1,5 @@
 const { Telegraf } = require('telegraf');
+const { Router, session } = Telegraf;
 const schedule = require('node-schedule');
 const mongoose = require('mongoose');
 const moment = require('moment');
@@ -10,7 +11,6 @@ const logger = require('./utils/logger');
 const scrap = require('./services/scraper');
 const joiValidate = require('./utils/joiValidate');
 const currenciesJoiSchema = require('./joiSchemes/currency').addCurrency;
-const { number } = require('joi');
 
 // get plutus defi from https://coindataflow.com/ru
 async function getPlutus() {
@@ -29,18 +29,30 @@ mongoose.connect(mongodbUri, configs.mongooseConnectionOptions)
     .then(() => logger.info("[DB] Connected to mongodb..."))
     .catch(err => logger.error(`[DB] Could not connect to mongodb... [${err}]`));
 
-bot.start((ctx) => {
-  logger.info(`[START] [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`)
-  return ctx.reply('Dorou. Commands: /help, /subscribe, /unsubscribe, /getall, /getlist, /add, /get')
-});
+// some shit
+bot.use(session({
+  makeKey: (ctx) => ctx.from?.id
+}));
 
 bot.use((ctx, next) => {
   if (ctx.message) {
-    logger.info(`[MESSAGE] "${ctx.message.text}" [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+    logger.info(`[MESSAGE] "${ctx.message.text}" [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
   } else {
-    logger.info('Smth strange');
+    if (ctx.update.callback_query.data) {
+      logger.info(`[ACTION] "${ctx.update.callback_query.data}" [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+      ctx.update.callback_query.options = ctx.update.callback_query.data.split(' ')[1];
+      ctx.update.callback_query.data = ctx.update.callback_query.data.split(' ')[0];
+    } else {
+      logger.info('Smth strange', {c: ctx.message});
+    }
   }
   return next();
+});
+
+bot.start((ctx) => {
+  logger.info(`[START] [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`)
+
+  return ctx.reply('Dorou. Commands: /help, /subscribe, /unsubscribe, /getall, /getlist, /add, /get')
 });
 
 bot.help((ctx) => {
@@ -48,7 +60,8 @@ bot.help((ctx) => {
   return ctx.reply(`Commands usage:
   /subscribe, /unsubscribe - to scheduled messages
   /getall - get all valid currencies from DB
-  /getlist - get full list of currencies (with param names will get only names. Ex: /getlist names)
+  /getlist - get full list of currencies
+  /getnames - get full list of currencies names
   /add [name] [link] [selectors] - add custom currency ('name' and 'link' params should be without whitespaces but whitespaces allowed for 'selectors' param).
   /get [name] - get currency value`);
 });
@@ -72,7 +85,7 @@ bot.command('unsubscribe', async (ctx) => {
   try {
     await User.deleteByChatId(ctx.message.chat.id);
     logger.info(`[UNSUBSCRIBE] succesfully unsubscribed [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
-    return ctx.reply('Nu i sjerdalaj!');
+    return ctx.reply('Nu i spierdalaj!');
   } catch (ex) {
     logger.error(`[UNSUBSCRIBE] error [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`, { ex });
     return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
@@ -156,19 +169,35 @@ bot.command('get', async (ctx) => {
   return ctx.reply(`No such currency inside DB`);
 });
 
-bot.command('getlist', async (ctx) => {
-  if (ctx.message.text.split(' ')[1] === 'names') {
-    try {
-      const currencies = await Currency.getAll();
-      const formatted = currencies.map((item) => item.name);
-      logger.info(`[GET LIST] Succesfully got list of names [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
-      return ctx.reply(`List: ${JSON.stringify(formatted, null, ' ')}`);
-    } catch (ex) {
-      logger.error(`[GET LIST] error`, { ex });
-      return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
-    }
+bot.action('get', async (ctx) => {
+  const name = ctx.update.callback_query.options;
+  let currency;
+
+  if (!name) {
+    logger.info(`[GET] no name [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+    return ctx.reply(`Specify currency name`);
   }
 
+  console.log(name)
+
+  try {
+    currency = await Currency.getByName(name);
+    logger.info(`[GET] Successfully got ${name} [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+  } catch (ex) {
+    logger.error('[GET] get currency error', ex);
+    return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
+  }
+
+  if (currency) {
+    const value = await scrapCurrency(currency.link, currency.selector);
+    logger.info(`[GET] ${currency.name} currency value succesfully got`);
+    return ctx.reply(`${currency.name}: ${value}`);
+  };
+
+  return ctx.reply(`No such currency inside DB`);
+})
+
+bot.command('getlist', async (ctx) => {
   try {
     const currencies = await Currency.getAll();
     const formatted = currencies.map((item) => {
@@ -185,7 +214,26 @@ bot.command('getlist', async (ctx) => {
     logger.error(`[GET LIST] error`, { ex });
     return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
   }
-})
+});
+
+bot.command('getnames', async (ctx) => {
+  try {
+    const currencies = await Currency.getAll();
+    const formatted = currencies.map((item) => {
+      return {text: item.name, callback_data: `get ${item.name}`}
+      // return {text: `/get ${item.name}`}
+    });
+    logger.info(`[GET LIST] Succesfully got list of names [id ${ctx.message.chat.id}, username ${ctx.message.chat.username}]`);
+    return ctx.reply(`List`, {
+      reply_markup: {
+        inline_keyboard:[formatted]
+      }
+    });
+  } catch (ex) {
+    logger.error(`[GET LIST] error`, { ex });
+    return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
+  }
+});
 
 bot.hears('ping', (ctx) => ctx.reply('pong'));
 
