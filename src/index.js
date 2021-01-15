@@ -1,5 +1,5 @@
 const { Telegraf } = require('telegraf');
-const { Router, session } = Telegraf;
+// const { Router, session } = Telegraf;
 const schedule = require('node-schedule');
 const mongoose = require('mongoose');
 const express = require('express');
@@ -15,7 +15,12 @@ const currenciesJoiSchema = require('./joiSchemes/currency').addCurrency;
 const createUserJoiSchema = require('./joiSchemes/user').createUser;
 
 async function scrapCurrency(link, selector) {
-  return await scrap(link, selector);
+  try {
+    return await scrap(link, selector);
+  } catch (ex) {
+    logger.error(`[SCRAP] err `, { ex });
+    throw ex;
+  }
 }
 
 const bot = new Telegraf(configs.token);
@@ -121,7 +126,13 @@ bot.command('getall', async (ctx) => {
 
   if (currencies.length) {
     for (const currency of currencies) {
-      const value = await scrapCurrency(currency.link, currency.selector);
+      let value;
+      try {
+        value = await scrapCurrency(currency.link, currency.selector);
+      } catch (ex) {
+        logger.error(`[GET ALL] scrap error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
+        throw ex;
+      }
       ctx.reply(`${currency.name} current price: ${value}, <a href="${currency.link}">link</a>`, {parse_mode: 'HTML'});
     }
   }
@@ -195,7 +206,13 @@ bot.command('get', async (ctx) => {
   }
 
   if (currency) {
-    const value = await scrapCurrency(currency.link, currency.selector);
+    let value;
+    try {
+      value = await scrapCurrency(currency.link, currency.selector);
+    } catch (ex) {
+      logger.error(`[GET] scrap error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
+      throw ex;
+    }
     logger.info(`[GET] ${currency.name} currency value succesfully got`);
     return ctx.reply(`${currency.name}: ${value}`);
   }
@@ -283,7 +300,12 @@ schedule.scheduleJob('0 */30 * * * *', async function(){
 
   if (currencies.length) {
     for (const currency of currencies) {
-      const value = await scrapCurrency(currency.link, currency.selector);
+      let value;
+      try {
+        value = await scrapCurrency(currency.link, currency.selector);
+      } catch (ex) {
+        logger.error(`[SCHEDULER] scrap error `, { ex });
+      }
       message += `- ${currency.name} current price: ${value}, <a href="${currency.link}">link</a>
   `; //shit, but needed for formatting
     }

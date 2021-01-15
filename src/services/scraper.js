@@ -1,6 +1,6 @@
 const {performance} = require('perf_hooks');
-const fs = require('fs');
-const co = require('co');
+// const fs = require('fs');
+// const co = require('co');
 const Nightmare = require('nightmare');
 const cheerio = require('cheerio');
 const htmlparser2 = require('htmlparser2');
@@ -13,7 +13,8 @@ async function scrapper(uri, selectors) {
     const nightmare = Nightmare({show: false});
     let currencyValue = null;
 
-    await nightmare.goto(uri)
+    try {
+        await nightmare.goto(uri)
         .wait(1000)
         .wait('body')
         .evaluate(() => {
@@ -34,9 +35,13 @@ async function scrapper(uri, selectors) {
         })
         .catch(err => logger.error(`[SCRAPPER] error`, { err }));
 
-    const t1 = performance.now();
-    logger.info(`[SCRAPER] Time spent: ${Number((t1 - t0) / 1000).toFixed(2)}`);
-    return currencyValue;
+        const t1 = performance.now();
+        logger.info(`[SCRAPER] Time spent: ${Number((t1 - t0) / 1000).toFixed(2)}`);
+        return currencyValue;
+    } catch (ex) {
+        logger.error(`[SCRAPER] error`, { ex });
+        throw ex;
+    }
 }
 
 module.exports = scrapper;
