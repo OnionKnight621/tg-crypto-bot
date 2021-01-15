@@ -28,19 +28,19 @@ mongoose.connect(mongodbUri, configs.mongooseConnectionOptions)
     .then(() => logger.info("[DB] Connected to mongodb..."))
     .catch(err => logger.error(`[DB] Could not connect to mongodb... [${err}]`));
 
-// some shit
-bot.use(session({
-  makeKey: (ctx) => ctx.from?.id
-}));
+// // some shit
+// bot.use(session({
+//   makeKey: (ctx) => ctx.from?.id
+// }));
 
 bot.use((ctx, next) => {
-  // microsession
-  if (ctx.session.id) {
-    logger.info(`[SESSION] exists [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
-  } else {
-    ctx.session.id = ctx.from.id
-    logger.info(`[SESSION] created [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
-  }
+  // // microsession
+  // if (ctx.session.id) {
+  //   logger.info(`[SESSION] exists [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+  // } else {
+  //   ctx.session.id = ctx.from.id
+  //   logger.info(`[SESSION] created [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+  // }
 
   if (ctx.message) {
     logger.info(`[MESSAGE] "${ctx.message.text}" [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
@@ -306,6 +306,10 @@ schedule.scheduleJob('0 */30 * * * *', async function(){
 });
 
 bot.launch();
+
+expressApp.get('/', (req, res) => {
+  res.send(`Server is running on ${configs.port}`);
+});
 
 expressApp.get('/ping', (req, res) => {
   res.send('pong');
