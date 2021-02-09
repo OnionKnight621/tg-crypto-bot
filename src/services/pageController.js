@@ -3,8 +3,8 @@ const {performance} = require('perf_hooks');
 
 const logger = require('../utils/logger');
 
-async function scrap(browserInstance, url, selectors){
-    try{
+module.exports = async function scrap(browserInstance, url, selectors){
+    try {
         const t0 = performance.now();
 
         const browser = await browserInstance;
@@ -15,10 +15,8 @@ async function scrap(browserInstance, url, selectors){
         logger.info(`[SCRAP CONTROLLER] Time spent: ${Number((t1 - t0) / 1000).toFixed(2)}`)
         return scrappedData;
     }
-    catch(ex){
+    catch (ex){
         logger.error(`[SCRAP CONTROLLER] error`, { ex });
         throw ex;
     }
-}
-
-module.exports = scrap;
+};

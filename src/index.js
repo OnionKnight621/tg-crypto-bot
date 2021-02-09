@@ -277,7 +277,7 @@ bot.command('getnames', async (ctx) => {
 
 bot.hears('ping', (ctx) => ctx.reply('pong'));
 
-schedule.scheduleJob('0 */30 * * * *', async function(){
+schedule.scheduleJob('0 0 */1 * * *', async function(){
   let currencies;
   let subscribed;
   try {
