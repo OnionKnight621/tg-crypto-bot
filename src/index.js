@@ -9,18 +9,24 @@ const configs = require('./configs');
 const User = require('./db/chats/model');
 const Currency = require('./db/currencies/model');
 const logger = require('./utils/logger');
-const scrap = require('./services/scraper');
+// const scrapper = require('./services/scraperNightmare');
+const webBrowser = require('./services/webBrowser');
+const pageController = require('./services/pageController');
 const joiValidate = require('./utils/joiValidate');
 const currenciesJoiSchema = require('./joiSchemes/currency').addCurrency;
 const createUserJoiSchema = require('./joiSchemes/user').createUser;
 
 async function scrapCurrency(link, selector) {
-  try {
-    return await scrap(link, selector);
-  } catch (ex) {
-    logger.error(`[SCRAP] err `, { ex });
-    throw ex;
-  }
+  // old
+  // try {
+  //   return await scrap(link, selector);
+  // } catch (ex) {
+  //   logger.error(`[SCRAP] err `, { ex });
+  //   throw ex;
+  // }
+
+  let browserInstance = webBrowser.startBrowser();
+  return pageController(browserInstance, link, selector);
 }
 
 const bot = new Telegraf(configs.token);
@@ -33,20 +39,7 @@ mongoose.connect(mongodbUri, configs.mongooseConnectionOptions)
     .then(() => logger.info("[DB] Connected to mongodb..."))
     .catch(err => logger.error(`[DB] Could not connect to mongodb... [${err}]`));
 
-// // some shit
-// bot.use(session({
-//   makeKey: (ctx) => ctx.from?.id
-// }));
-
 bot.use((ctx, next) => {
-  // // microsession
-  // if (ctx.session.id) {
-  //   logger.info(`[SESSION] exists [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
-  // } else {
-  //   ctx.session.id = ctx.from.id
-  //   logger.info(`[SESSION] created [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
-  // }
-
   if (ctx.message) {
     logger.info(`[MESSAGE] "${ctx.message.text}" [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
   } else if (ctx.update.callback_query.data) {
@@ -231,7 +224,6 @@ bot.action('get', async (ctx) => {
 
   try {
     currency = await Currency.getByName(name);
-    logger.info(`[GET] Successfully got ${name} [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
   } catch (ex) {
     logger.error('[GET] get currency error', ex);
     return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);

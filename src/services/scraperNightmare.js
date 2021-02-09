@@ -7,6 +7,7 @@ const htmlparser2 = require('htmlparser2');
 
 const logger = require('../utils/logger');
 
+// disabled due to nightmare conflicts with heroku
 async function scrapper(uri, selectors) {
     const t0 = performance.now();
 
