@@ -322,9 +322,10 @@ schedule.scheduleJob('0 0 */1 * * *', async function() {
 
 schedule.scheduleJob('0 */5 * * * *', async function() {
   request('https://tg-pinger.herokuapp.com/', function (error, response, body) {
-      console.error('error:', error); // Print the error if one occurred
-      console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
-      console.log('body:', body); // Print the HTML for the Google homepage.
+      if (error) {
+        logger.err(error);
+      }
+      logger.info('Ping')
   });
 });
 
@@ -332,12 +333,12 @@ bot.launch();
 
 expressApp.get('/', (req, res) => {
   res.send(`Server is running on ${configs.port}`);
-  console.log('pinged');
+  logger.info('pinged');
 });
 
 expressApp.get('/ping', (req, res) => {
   res.send('pong');
-  console.log('ponged');
+  logger.info('ponged');
 });
 
 expressApp.listen(configs.port, () => {
