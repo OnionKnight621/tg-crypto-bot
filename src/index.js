@@ -332,10 +332,12 @@ bot.launch();
 
 expressApp.get('/', (req, res) => {
   res.send(`Server is running on ${configs.port}`);
+  console.log('pinged');
 });
 
 expressApp.get('/ping', (req, res) => {
   res.send('pong');
+  console.log('ponged');
 });
 
 expressApp.listen(configs.port, () => {
