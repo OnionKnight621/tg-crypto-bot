@@ -12,7 +12,7 @@ const Currency = {
     },
 
     getAll() {
-        return Model.find();
+        return Model.find().sort({ name: 1 });
     },
 
     deleteByName(name) {
