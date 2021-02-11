@@ -168,7 +168,7 @@ bot.command('add', async (ctx) => {
 
     const payload = {
         name         : inputString.slice(wIndices[0] + 1, wIndices[1]),
-        link         : inputString.slice(wIndices[1] + 1, wIndices[2]),
+        link         : encodeURI(inputString.slice(wIndices[1] + 1, wIndices[2])),
         selector     : inputString.slice(wIndices[2] + 1, wIndices[wIndices.length]),
         exchangeStock: inputString.slice(wIndices[1] + 1, wIndices[2]).match(re)[0]
     }
@@ -269,17 +269,27 @@ bot.command('getlist', async (ctx) => {
 bot.command('getnames', async (ctx) => {
     try {
         const currencies = await Currency.getAll();
-        const formatted = currencies.map((item) => {
-            return {text: item.name, callback_data: `get ${item.name}`};
-        });
-        logger.info(`[GET LIST] Succesfully got list of names [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
-        return ctx.reply(`List`, {
+
+        const inlineKeyboardArr = [];
+        let lineArray = [];
+        for (let i = 0; i < currencies.length; i++) {
+            if (lineArray.length >= 3 || i === currencies.length - 1) {
+                lineArray.push({text: currencies[i].name, callback_data: `get ${currencies[i].name}`});
+                inlineKeyboardArr.push(lineArray);
+                lineArray = [];
+            } else {
+                lineArray.push({text: currencies[i].name, callback_data: `get ${currencies[i].name}`});
+            }
+        }
+
+        logger.info(`[GET NAMES] Succesfully got list of names [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+        return ctx.reply('All available currencies', {
             reply_markup: {
-                inline_keyboard:[formatted]
+                inline_keyboard:[...inlineKeyboardArr]
             }
         });
     } catch (ex) {
-        logger.error(`[GET LIST] error`, { ex });
+        logger.error(`[GET NAMES] error`, { ex });
         return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
     }
 });
