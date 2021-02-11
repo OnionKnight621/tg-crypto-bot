@@ -1,10 +1,10 @@
 const { Telegraf } = require('telegraf');
+const {performance} = require('perf_hooks');
 // const { Router, session } = Telegraf;
 const schedule = require('node-schedule');
 const mongoose = require('mongoose');
 const express = require('express');
 const request = require('request');
-const moment = require('moment');
 const expressApp = express();
 
 const configs = require('./configs');
@@ -111,6 +111,7 @@ bot.command('unsubscribe', async (ctx) => {
 });
 
 bot.command('getall', async (ctx) => {
+    const t0 = performance.now();
     let currencies;
     try {
         currencies = await Currency.getAll();
@@ -139,7 +140,8 @@ bot.command('getall', async (ctx) => {
         ctx.reply(message, {parse_mode: 'HTML'});
     }
 
-    logger.info(`[GET ALL] [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+    const t1 = performance.now();
+    logger.info(`[GET ALL] [id ${ctx.chat.id}, username ${ctx.chat.username}], spent ${Number((t1 - t0) / 1000).toFixed(2)}`);
     return;
 });
 
