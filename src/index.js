@@ -4,6 +4,7 @@ const schedule = require('node-schedule');
 const mongoose = require('mongoose');
 const express = require('express');
 const request = require('request');
+const moment = require('moment');
 const expressApp = express();
 
 const configs = require('./configs');
@@ -42,13 +43,13 @@ mongoose.connect(mongodbUri, configs.mongooseConnectionOptions)
 
 bot.use((ctx, next) => {
     if (ctx.message) {
-            logger.info(`[MESSAGE] "${ctx.message.text}" [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
-    } else if (ctx.update.callback_query.data) {
-            logger.info(`[ACTION] "${ctx.update.callback_query.data}" [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
-            ctx.update.callback_query.options = ctx.update.callback_query.data.split(' ')[1];
-            ctx.update.callback_query.data = ctx.update.callback_query.data.split(' ')[0];
+        logger.info(`[MESSAGE] "${ctx.message.text}" [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+    } else if (ctx.update.callback_query.data) { // if action triggered
+        logger.info(`[ACTION] "${ctx.update.callback_query.data}" [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
+        ctx.update.callback_query.options = ctx.update.callback_query.data.split(' ')[1];
+        ctx.update.callback_query.data = ctx.update.callback_query.data.split(' ')[0];
     } else {
-            logger.info('Smth strange', {c: ctx.message});
+        logger.info('Smth strange', {c: ctx.message});
     }
     return next();
 });
@@ -154,7 +155,7 @@ bot.command('add', async (ctx) => {
 
     for (let i = 0; i < inputString.length; i++) {
         if (inputString[i] === ' ') {
-        wIndices.push(i);
+            wIndices.push(i);
         }
     }
 
@@ -209,10 +210,10 @@ bot.command('get', async (ctx) => {
     if (currency) {
         let value;
         try {
-        value = await scrapCurrency(currency.link, currency.selector);
+            value = await scrapCurrency(currency.link, currency.selector);
         } catch (ex) {
-        logger.error(`[GET] scrap error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
-        throw ex;
+            logger.error(`[GET] scrap error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
+            throw ex;
         }
         logger.info(`[GET] ${currency.name} currency value succesfully got`);
         return ctx.reply(`${currency.name}: ${value}`);
@@ -244,21 +245,19 @@ bot.action('get', async (ctx) => {
     };
 
     return ctx.reply(`No such currency inside DB`);
-})
+});
 
 bot.command('getlist', async (ctx) => {
     try {
         const currencies = await Currency.getAll();
-        const formatted = currencies.map((item) => {
-        return {
-            name: item.name,
-            link: item.link,
-            selectors: item.selector,
-            date: item.createdAt
-        }
-        })
+        let message = `List:
+        `;
+        currencies.forEach(item => {
+            message += `- <b>${item.name}</b>, selector: ${item.selector}, <a href="${item.link}">link</a>
+        `;
+        });
         logger.info(`[GET LIST] Succesfully got list [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
-        return ctx.reply(`List: ${JSON.stringify(formatted, null, ' ')}`);
+        return ctx.reply(message,  {parse_mode: 'HTML'});
     } catch (ex) {
         logger.error(`[GET LIST] error`, { ex });
         return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
@@ -269,13 +268,13 @@ bot.command('getnames', async (ctx) => {
     try {
         const currencies = await Currency.getAll();
         const formatted = currencies.map((item) => {
-        return {text: item.name, callback_data: `get ${item.name}`};
+            return {text: item.name, callback_data: `get ${item.name}`};
         });
         logger.info(`[GET LIST] Succesfully got list of names [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
         return ctx.reply(`List`, {
-        reply_markup: {
-            inline_keyboard:[formatted]
-        }
+            reply_markup: {
+                inline_keyboard:[formatted]
+            }
         });
     } catch (ex) {
         logger.error(`[GET LIST] error`, { ex });
@@ -300,14 +299,14 @@ schedule.scheduleJob('0 0 */1 * * *', async function() {
 
     if (currencies.length) {
         for (const currency of currencies) {
-        let value;
-        try {
-            value = await scrapCurrency(currency.link, currency.selector);
-        } catch (ex) {
-            logger.error(`[SCHEDULER] scrap error `, { ex });
-        }
-        message += `- <b>${currency.name}</b> current price: ${value}, <a href="${currency.link}">link</a>
-    `; //shit, but needed for formatting
+            let value;
+            try {
+                value = await scrapCurrency(currency.link, currency.selector);
+            } catch (ex) {
+                logger.error(`[SCHEDULER] scrap error `, { ex });
+            }
+            message += `- <b>${currency.name}</b> current price: ${value}, <a href="${currency.link}">link</a>
+        `; //shit, but needed for formatting
         }
     }
 
@@ -320,7 +319,7 @@ schedule.scheduleJob('0 0 */1 * * *', async function() {
 
     if (subscribed.length) {
         for (const sub of subscribed) {
-        bot.telegram.sendMessage(sub.chatId, message, {parse_mode: 'HTML'});
+            bot.telegram.sendMessage(sub.chatId, message, {parse_mode: 'HTML'});
         }
     }
 
