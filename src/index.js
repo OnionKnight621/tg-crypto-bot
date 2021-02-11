@@ -118,21 +118,28 @@ bot.command('getall', async (ctx) => {
         return ctx.reply(`Smth went wrong: ${JSON.stringify(ex, null, ' ')}`);
     }
 
+    ctx.reply('Scrapping...');
+
+    let message = `Currencies:
+    `;
+
     if (currencies.length) {
         for (const currency of currencies) {
-        let value;
-        try {
-            value = await scrapCurrency(currency.link, currency.selector);
-        } catch (ex) {
-            logger.error(`[GET ALL] scrap error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
-            throw ex;
+            let value;
+            try {
+                value = await scrapCurrency(currency.link, currency.selector);
+            } catch (ex) {
+                logger.error(`[GET ALL] scrap error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
+                throw ex;
+            }
+            message += `- <b>${currency.name}</b> current price: ${value}, <a href="${currency.link}">link</a>
+    `; //shit, but needed for formatting
         }
-        ctx.reply(`${currency.name} current price: ${value}, <a href="${currency.link}">link</a>`, {parse_mode: 'HTML'});
-        }
+        ctx.reply(message, {parse_mode: 'HTML'});
     }
 
     logger.info(`[GET ALL] [id ${ctx.chat.id}, username ${ctx.chat.username}]`);
-    return ctx.reply(`Thats All for now`);
+    return;
 });
 
 bot.command('add', async (ctx) => {
@@ -299,7 +306,7 @@ schedule.scheduleJob('0 0 */1 * * *', async function() {
         } catch (ex) {
             logger.error(`[SCHEDULER] scrap error `, { ex });
         }
-        message += `- ${currency.name} current price: ${value}, <a href="${currency.link}">link</a>
+        message += `- <b>${currency.name}</b> current price: ${value}, <a href="${currency.link}">link</a>
     `; //shit, but needed for formatting
         }
     }
