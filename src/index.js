@@ -32,8 +32,10 @@ async function scrapCurrency(link, selector) {
 }
 
 const bot = new Telegraf(configs.token);
-bot.telegram.setWebhook(`${configs.appUri}/bot${configs.token}`);
-expressApp.use(bot.webhookCallback(`/bot${configs.token}`));
+
+// seems no need
+// bot.telegram.setWebhook(`${configs.appUri}/bot${configs.token}`);
+// expressApp.use(bot.webhookCallback(`/bot${configs.token}`));
 
 const mongodbUri = configs.mongodbUri;
 
@@ -134,7 +136,7 @@ bot.command('getall', async (ctx) => {
                 logger.error(`[GET ALL] scrap error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
                 throw ex;
             }
-            message += `- <b>${currency.name}</b> current price: ${value}, <a href="${currency.link}">link</a>
+            message += `- <b><a href="${currency.link}">${currency.name}</a></b>: ${currency.lastPrice} -> ${value} 
     `; //shit, but needed for formatting
         }
         ctx.reply(message, {parse_mode: 'HTML'});
@@ -218,7 +220,7 @@ bot.command('get', async (ctx) => {
             throw ex;
         }
         logger.info(`[GET] ${currency.name} currency value succesfully got`);
-        return ctx.reply(`${currency.name}: ${value}`);
+        return ctx.reply(`<b><a href="${currency.link}">${currency.name}</a></b>: ${currency.lastPrice} -> ${value}`, {parse_mode: 'HTML'});
     }
 
     return ctx.reply(`No such currency inside DB`);
@@ -243,7 +245,7 @@ bot.action('get', async (ctx) => {
     if (currency) {
         const value = await scrapCurrency(currency.link, currency.selector);
         logger.info(`[GET] ${currency.name} currency value succesfully got`);
-        return ctx.reply(`${currency.name}: ${value}`);
+        return ctx.reply(`<b><a href="${currency.link}">${currency.name}</a></b>: ${currency.lastPrice} -> ${value}`, {parse_mode: 'HTML'});
     };
 
     return ctx.reply(`No such currency inside DB`);
@@ -317,8 +319,18 @@ schedule.scheduleJob('0 0 */1 * * *', async function() {
             } catch (ex) {
                 logger.error(`[SCHEDULER] scrap error `, { ex });
             }
-            message += `- <b>${currency.name}</b> current price: ${value}, <a href="${currency.link}">link</a>
-        `; //shit, but needed for formatting
+            message += `- <b><a href="${currency.link}">${currency.name}</a></b>: ${currency.lastPrice} -> ${value} 
+    `; //shit, but needed for formatting
+
+            try {
+                await Currency.createOrUpdate({
+                    name: currency.name,
+                    lastPrice: value
+                })
+            } catch (ex) {
+                logger.error(`[GET ALL] save value error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
+                throw ex;
+            }
         }
     }
 
