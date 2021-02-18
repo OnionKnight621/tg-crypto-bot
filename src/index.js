@@ -213,6 +213,7 @@ bot.command('get', async (ctx) => {
 
     if (currency) {
         let value;
+        ctx.reply('Scrapping...');
         try {
             value = await scrapCurrency(currency.link, currency.selector);
         } catch (ex) {
@@ -243,7 +244,14 @@ bot.action('get', async (ctx) => {
     }
 
     if (currency) {
-        const value = await scrapCurrency(currency.link, currency.selector);
+        let value;
+        ctx.reply('Scrapping...');
+        try {
+            value = await scrapCurrency(currency.link, currency.selector);
+        } catch (ex) {
+            logger.error(`[GET] scrap error [id ${ctx.chat.id}, username ${ctx.chat.username}]`, { ex });
+            throw ex;
+        }
         logger.info(`[GET] ${currency.name} currency value succesfully got`);
         return ctx.reply(`<b><a href="${currency.link}">${currency.name}</a></b>: ${currency.lastPrice} -> ${value}`, {parse_mode: 'HTML'});
     };
